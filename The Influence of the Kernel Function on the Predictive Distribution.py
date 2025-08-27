@@ -1,223 +1,21 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[4]:
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.gaussian_process.kernels import RBF, ConstantKernel
-from sklearn.gaussian_process import GaussianProcessRegressor
-
-# ---------------------------
-# 手动调节的超参数部分
-# ---------------------------
-length_scale = 1.0         # RBF核的长度尺度
-variance = 1.0             # 核函数前的常数（方差）
-n_prior_samples = 5        # 采样条数
-n_points = 100             # X轴点数
-
-# --------------------------- 
-# 构造核函数
-# ---------------------------
-kernel = ConstantKernel(constant_value=variance) * RBF(length_scale=length_scale)
-
-# 生成测试点（1D输入）
-X = np.linspace(0, 5, n_points).reshape(-1, 1)
-
-# 构造协方差矩阵
-K = kernel(X)
-
-# 加上微小扰动，防止数值不稳定
-K += 1e-6 * np.eye(n_points)
-
-# ---------------------------
-# 采样 GP prior
-# ---------------------------
-prior_samples = np.random.multivariate_normal(
-    mean=np.zeros(n_points),
-    cov=K,
-    size=n_prior_samples
+import numpy as np, matplotlib.pyplot as plt
+from numpy.random import default_rng
+from scipy.stats import multivariate_normal
+from sklearn.gaussian_process.kernels import (
+    RBF, RationalQuadratic, Matern, ExpSineSquared,
+    DotProduct, WhiteKernel, ConstantKernel
 )
 
-# ---------------------------
-# 绘图
-# ---------------------------
-plt.figure(figsize=(10, 5))
-for i in range(n_prior_samples):
-    plt.plot(X, prior_samples[i], label=f'Prior Sample {i+1}')
-plt.title(f'GP Prior Samples with RBF Kernel\nlength_scale={length_scale}, variance={variance}')
-plt.xlabel('Input X')
-plt.ylabel('Sampled Function Value')
-plt.grid(True)
-plt.legend()
-plt.tight_layout()
-plt.show()
+# --------------------------------------------------------------------------
 
-
-# In[ ]:
-
-
-
-
-
-# In[11]:
-
-
-from sklearn.gaussian_process.kernels import RationalQuadratic, ConstantKernel
-
-length_scale = 0.5
-alpha = 1000.0
-variance = 1.0
-n_prior_samples = 5
-n_points = 100
-
-kernel = ConstantKernel(variance) * RationalQuadratic(length_scale=length_scale, alpha=alpha)
-
-X = np.linspace(0, 5, n_points).reshape(-1, 1)
-K = kernel(X) + 1e-6 * np.eye(n_points)
-samples = np.random.multivariate_normal(np.zeros(n_points), K, size=n_prior_samples)
-
-plt.figure(figsize=(10, 5))
-for i in range(n_prior_samples):
-    plt.plot(X, samples[i], label=f'Sample {i+1}')
-plt.title(f'GP Prior Samples with RQ Kernel\nlength_scale={length_scale}, alpha={alpha}, variance={variance}')
-plt.xlabel('Input X')
-plt.ylabel('Sampled Function Value')
-plt.grid(True)
-plt.legend()
-plt.tight_layout()
-plt.show()
-
-
-# In[ ]:
-
-
-
-
-
-# In[15]:
-
-
-from sklearn.gaussian_process.kernels import Matern, ConstantKernel
-
-length_scale = 0.3
-nu = 2.5  # 可设为 0.5, 1.5, 2.5
-variance = 1.0
-n_prior_samples = 5
-n_points = 100
-
-kernel = ConstantKernel(variance) * Matern(length_scale=length_scale, nu=nu)
-
-X = np.linspace(0, 5, n_points).reshape(-1, 1)
-K = kernel(X) + 1e-6 * np.eye(n_points)
-samples = np.random.multivariate_normal(np.zeros(n_points), K, size=n_prior_samples)
-
-plt.figure(figsize=(10, 5))
-for i in range(n_prior_samples):
-    plt.plot(X, samples[i], label=f'Sample {i+1}')
-plt.title(f'GP Prior Samples with Matern Kernel (ν={nu})\nlength_scale={length_scale}, variance={variance}')
-plt.xlabel('Input X')
-plt.ylabel('Sampled Function Value')
-plt.grid(True)
-plt.legend()
-plt.tight_layout()
-plt.show()
-
-
-# In[ ]:
-
-
-
-
-
-# In[18]:
-
-
-from sklearn.gaussian_process.kernels import ExpSineSquared, ConstantKernel
-
-length_scale = 1.0
-periodicity = 4.0
-variance = 1.0
-n_prior_samples = 5
-n_points = 100
-
-kernel = ConstantKernel(variance) * ExpSineSquared(length_scale=length_scale, periodicity=periodicity)
-
-X = np.linspace(0, 5, n_points).reshape(-1, 1)
-K = kernel(X) + 1e-6 * np.eye(n_points)
-samples = np.random.multivariate_normal(np.zeros(n_points), K, size=n_prior_samples)
-
-plt.figure(figsize=(10, 5))
-for i in range(n_prior_samples):
-    plt.plot(X, samples[i], label=f'Sample {i+1}')
-plt.title(f'GP Prior Samples with PER Kernel \nlength_scale={length_scale}, periodicity={periodicity}, variance={variance}')
-plt.xlabel('Input X')
-plt.ylabel('Sampled Function Value')
-plt.grid(True)
-plt.legend()
-plt.tight_layout()
-plt.show()
-
-
-# In[ ]:
-
-
-
-
-
-# In[21]:
-
-
-from sklearn.gaussian_process.kernels import DotProduct, WhiteKernel
-
-sigma_0 = 2.0  # 类似 bias term
-n_prior_samples = 5
-n_points = 100
-
-# DotProduct 本身就是线性核，通常与 WhiteKernel 一起使用避免病态
-kernel = DotProduct(sigma_0=sigma_0) + WhiteKernel(noise_level=1e-6)
-
-X = np.linspace(0, 5, n_points).reshape(-1, 1)
-K = kernel(X)  # DotProduct 自带 bias 项，已经包括常数
-samples = np.random.multivariate_normal(np.zeros(n_points), K, size=n_prior_samples)
-
-plt.figure(figsize=(10, 5))
-for i in range(n_prior_samples):
-    plt.plot(X, samples[i], label=f'Sample {i+1}')
-plt.title(f'GP Prior Samples with LIN Kernel\nsigma_0={sigma_0}')
-plt.xlabel('Input X')
-plt.ylabel('Sampled Function Value')
-plt.grid(True)
-plt.legend()
-plt.tight_layout()
-plt.show()
-
-
-# In[ ]:
-
-
-
-
-
-# In[13]:
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-from numpy.random import default_rng
-from sklearn.gaussian_process.kernels import RBF, RationalQuadratic, Matern
-
-# -------------------- Settings --------------------
+#Figure 6
+#  Settings 
 rng = default_rng(33)
 n_samples = 5
 
-# Left column: domain for GP prior samples (1D)
-x_left = np.linspace(0.0, 5.0, 300)
-
-# Right column domains
-r_sym = np.linspace(-5.0, 5.0, 400)   # for RBF/RQ (symmetric about 0)
-r_pos = np.linspace(0.0,  5.0, 400)   # for Matérn (monotone decay)
+x_left = np.linspace(0.0, 5.0, 300)      # Left column: domain for GP prior samples (1D)
+r_sym = np.linspace(-5.0, 5.0, 400)      # for RBF/RQ (symmetric about 0)   #Right column
+r_pos = np.linspace(0.0,  5.0, 400)      # for Matérn (monotone decay)
 
 # Kernel hyperparameters (as requested)
 ell = 1.0         # length-scale
@@ -233,7 +31,6 @@ lw = 2.2
 fig, axes = plt.subplots(3, 2, figsize=(10, 6),
                          gridspec_kw={"wspace": 0.35, "hspace": 0.65})
 
-# -------------------- Helpers --------------------
 def style_axes(ax, left=True):
     """Thicker spines and clean look."""
     for s in ax.spines.values():
@@ -261,7 +58,7 @@ def k_rq(r, ell=1.0, alpha=2.0, sigma2=1.0):
     # k(r) = σ^2 (1 + r^2/(2 α ℓ^2))^{-α}
     return sigma2 * (1.0 + (r**2) / (2.0 * alpha * ell**2)) ** (-alpha)
 
-# -------------------- Kernels for left column sampling --------------------
+# Kernels for left column sampling
 # Use sklearn for sampling (same hyperparameters), amplitude = 1
 kernels_for_sampling = [
     ("RBF",    RBF(length_scale=ell)),
@@ -269,7 +66,7 @@ kernels_for_sampling = [
     ("RQ",     RationalQuadratic(length_scale=ell, alpha=alpha)),
 ]
 
-# -------------------- Plotting --------------------
+# Plotting 
 for row, (name, k_skl) in enumerate(kernels_for_sampling):
     # Left: GP prior samples
     axL = axes[row, 0]
@@ -306,32 +103,15 @@ for ax in axes.ravel():
 plt.savefig("kernel_prior_and_profiles_correct_profiles.png", dpi=300, bbox_inches="tight")
 plt.show()
 
+#-----------------------------------------------------------------------------
 
-# In[ ]:
-
-
-
-
-
-# In[3]:
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-from numpy.random import default_rng
-from sklearn.gaussian_process.kernels import ExpSineSquared, DotProduct
-
-# -------------------- Settings --------------------
-rng = default_rng(33)         # use default_rng() for fresh samples each run
+#Figure 7
+rng = default_rng(33)         
 n_samples = 5
 
-# Left column: domain for GP prior samples (1D input)
 x_left = np.linspace(0.0, 5.0, 300)
-
-# Right column: r in [-5, 5] to match the paper's symmetric plots
 r = np.linspace(-5.0, 5.0, 400)
 
-# Hyperparameters (match paper-style)
 ell = 1.0      # length-scale ℓ for PER
 p   = 3.0      # period p for PER (shorter -> multiple cycles on [-5,5])
 sigma2 = 1.0   # amplitude σ^2 (implicit 1 in sklearn)
@@ -369,13 +149,12 @@ def k_lin(r):
     # Linear kernel (dot-product style)
     return r  # slope 1 for visual clarity
 
-# -------------------- Kernels for left-column sampling --------------------
 kernels_for_sampling = [
     ("PER", ExpSineSquared(length_scale=ell, periodicity=p)),
     ("LIN", DotProduct(sigma_0=sigma0)),   # pure linear (no bias)
 ]
 
-# -------------------- Plotting --------------------
+# Plotting
 for row, (name, k_skl) in enumerate(kernels_for_sampling):
     # Left: GP prior samples
     axL = axes[row, 0]
@@ -413,256 +192,15 @@ for ax in axes.ravel():
 plt.savefig("per_lin_like_paper.png", dpi=300, bbox_inches="tight")
 plt.show()
 
+#-----------------------------------------------------------------------------------------------
 
-# In[ ]:
+#Figure 8
+np.random.seed(42)                   # Set random seed
 
-
-
-
-
-# In[4]:
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-from numpy.random import default_rng
-from sklearn.gaussian_process.kernels import RBF, DotProduct, RationalQuadratic, ExpSineSquared
-
-# -------------------- settings --------------------
-rng = default_rng(0)          # change to default_rng() for different samples each run
-n_samples = 5                 # number of functions sampled in each panel
-x = np.linspace(0.0, 5.0, 300)
-
-# Normalize and rescale input to avoid too large values for DotProduct kernel
-x_feat = ((x - x.mean()) / 2.0).reshape(-1, 1)
-
-# Base kernels (hyperparameters can be adjusted)
-rbf = RBF(length_scale=1.6)
-lin = DotProduct(sigma_0=1.0)            # linear kernel (formerly DP)
-rq  = RationalQuadratic(length_scale=1.2, alpha=0.8)
-per = ExpSineSquared(length_scale=1.0, periodicity=2.2)
-
-# Composite kernels: addition & multiplication
-panels = [
-    ("RBF+LIN",  rbf + lin),
-    ("RBF*LIN",  rbf * lin),
-    ("RQ+PER",   rq  + per),
-    ("RQ*PER",   rq  * per),
-]
-
-def gp_prior_samples(kernel, X, n_funcs, rng):
-    """Sample from zero-mean GP prior given kernel and 1D inputs X."""
-    K = kernel(X)                      # covariance matrix
-    K = K + 1e-8 * np.eye(len(X))      # numerical stability
-    Y = rng.multivariate_normal(np.zeros(len(X)), K, size=n_funcs).T
-    return Y                           # shape: (len(X), n_funcs)
-
-def style_axes(ax, ylim=(-3.5, 3.5)):
-    """Apply consistent axis style for better visualization."""
-    for s in ax.spines.values():
-        s.set_linewidth(1.4)
-    ax.tick_params(axis='both', labelsize=9, width=1.2, length=3)
-    ax.set_xlim(x.min(), x.max())
-    ax.set_ylim(*ylim)
-
-# -------------------- plotting --------------------
-fig, axes = plt.subplots(2, 2, figsize=(10, 6.2),
-                         gridspec_kw={"wspace": 0.35, "hspace": 0.60})
-
-for ax, (label, kernel) in zip(axes.ravel(), panels):
-    Y = gp_prior_samples(kernel, x_feat, n_samples, rng)
-    for i in range(n_samples):
-        ax.plot(x, Y[:, i], linewidth=2.2)
-    style_axes(ax)
-    # Label y-axis with kernel name (consistent with example figure)
-    ax.set_ylabel(label, rotation=90, fontsize=11, labelpad=10)
-    ax.set_xlabel("")
-
-plt.savefig("composite_kernels_priors_lin.png", dpi=300, bbox_inches="tight")
-plt.show()
-
-
-# In[ ]:
-
-
-
-
-
-# In[5]:
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-
-# ------------------ hyperparameters ------------------
-sigma2 = 1.0      # amplitude (here all kernels scaled to 1)
-ell    = 1.0      # length-scale l
-alpha  = 2.0      # RQ shape
-p      = 3.0      # PER period
-
-# Distance domain r in [-5, 5]
-r = np.linspace(-5.0, 5.0, 800)
-
-# ------------------ base kernels k(r) ------------------
-def k_rbf(r, ell=1.0, sigma2=1.0):
-    return sigma2 * np.exp(-(r**2)/(2.0*ell**2))
-
-def k_rq(r, ell=1.0, alpha=2.0, sigma2=1.0):
-    return sigma2 * (1.0 + (r**2)/(2.0*alpha*ell**2))**(-alpha)
-
-def k_per(r, ell=1.0, p=3.0, sigma2=1.0):
-    # ExpSineSquared: sigma^2 * exp( - 2 sin^2(pi r / p) / l^2 )
-    return sigma2 * np.exp(-2.0 * np.sin(np.pi * r / p)**2 / (ell**2))
-
-def k_lin(r):
-    # Linear kernel section (same as DotProduct without bias)
-    return r
-
-# ------------------ composite kernels on r ------------------
-def add(a, b):  return a + b
-def mul(a, b):  return a * b
-
-# Compute profiles
-rbf   = k_rbf(r, ell=ell, sigma2=sigma2)
-rq    = k_rq(r,  ell=ell, alpha=alpha, sigma2=sigma2)
-per   = k_per(r, ell=ell, p=p, sigma2=sigma2)
-lin   = k_lin(r)
-
-profiles = [
-    ("RBF+LIN",  add(rbf, lin)),   ("RBF*LIN",  mul(rbf, lin)),
-    ("RBF+PER",  add(rbf, per)),   ("RBF*PER",  mul(rbf, per)),
-    ("RQ+LIN",   add(rq,  lin)),   ("RQ*LIN",   mul(rq,  lin)),
-]
-
-# ------------------ plotting ------------------
-fig, axes = plt.subplots(3, 2, figsize=(10, 7.2),
-                         gridspec_kw={"wspace": 0.35, "hspace": 0.75})
-
-for ax, (label, y) in zip(axes.ravel(), profiles):
-    ax.plot(r, y, linewidth=2.3)
-    # style
-    for s in ax.spines.values():
-        s.set_linewidth(1.4)
-    ax.tick_params(axis='both', labelsize=9, width=1.2, length=3)
-    ax.set_xlim(r.min(), r.max())
-    ax.margins(x=0.03)
-    ax.set_ylabel(label, rotation=90, fontsize=11, labelpad=10)
-    ax.set_xlabel("")
-
-plt.savefig("composite_kernel_profiles_6panels_lin.png", dpi=300, bbox_inches="tight")
-plt.show()
-
-
-# In[ ]:
-
-
-
-
-
-# In[7]:
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-
-# ------------------ Hyperparameters ------------------
-sigma2 = 1.0   # amplitude
-ell    = 1.0   # length-scale l
-alpha  = 2.0   # RQ shape
-p      = 3.0   # PER period
-
-# Domains: symmetric for kernels involving PER; nonnegative for pure distance kernels
-r_sym  = np.linspace(-5.0, 5.0, 800)   # for plots with PER
-r_pos  = np.linspace(0.0,  5.0, 800)   # for RQ+Matern and RQ*Matern
-
-# ------------------ Base kernels k(r) ------------------
-def k_rbf(r, ell=1.0, sigma2=1.0):
-    return sigma2 * np.exp(-(r**2)/(2.0*ell**2))
-
-def k_rq(r, ell=1.0, alpha=2.0, sigma2=1.0):
-    # Rational Quadratic as function of distance r >= 0
-    return sigma2 * (1.0 + (r**2)/(2.0*alpha*ell**2))**(-alpha)
-
-def k_per(r, ell=1.0, p=3.0, sigma2=1.0):
-    # ExpSineSquared: sigma^2 * exp( - 2 sin^2(pi r / p) / l^2 )
-    return sigma2 * np.exp(-2.0 * np.sin(np.pi * r / p)**2 / (ell**2))
-
-def k_matern32(r, ell=1.0, sigma2=1.0):
-    # Matérn ν=3/2: sigma^2 * (1 + sqrt(3) r / l) * exp(-sqrt(3) r / l)
-    c = np.sqrt(3.0) * r / ell
-    return sigma2 * (1.0 + c) * np.exp(-c)
-
-def k_lin_section(r):
-    # Linear (DotProduct) illustrative section
-    return r
-
-# Short-hands using |r| when needed
-abs_sym  = np.abs(r_sym)
-abs_pos  = r_pos  # already nonnegative
-
-# ------------------ Composite profiles ------------------
-profiles = [
-    ("RQ+PER",    k_rq(abs_sym, ell, alpha, sigma2) + k_per(r_sym, ell, p, sigma2),
-                  r_sym),
-    ("RQ*PER",    k_rq(abs_sym, ell, alpha, sigma2) * k_per(r_sym, ell, p, sigma2),
-                  r_sym),
-    ("LIN+PER",   k_lin_section(r_sym) + k_per(r_sym, ell, p, sigma2),
-                  r_sym),
-    ("LIN*PER",   k_lin_section(r_sym) * k_per(r_sym, ell, p, sigma2),
-                  r_sym),
-    ("RQ+Matern", k_rq(abs_pos, ell, alpha, sigma2) + k_matern32(abs_pos, ell, sigma2),
-                  r_pos),
-    ("RQ*Matern", k_rq(abs_pos, ell, alpha, sigma2) * k_matern32(abs_pos, ell, sigma2),
-                  r_pos),
-]
-
-# ------------------ Plotting ------------------
-fig, axes = plt.subplots(3, 2, figsize=(10, 6.6),
-                         gridspec_kw={"wspace": 0.35, "hspace": 0.75})
-
-for ax, (label, y, rr) in zip(axes.ravel(), profiles):
-    ax.plot(rr, y, linewidth=2.3)
-    # styling
-    for s in ax.spines.values():
-        s.set_linewidth(1.4)
-    ax.tick_params(axis='both', labelsize=9, width=1.2, length=3)
-    ax.set_xlim(rr.min(), rr.max())
-    ax.margins(x=0.03)
-    ax.set_ylabel(label, rotation=90, fontsize=11, labelpad=10)
-    ax.set_xlabel("")
-
-plt.savefig("composite_kernel_profiles_rq_per_lin_matern.png", dpi=300, bbox_inches="tight")
-plt.show()
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-RBF
-
-
-# In[85]:
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.stats import multivariate_normal
-
-# 设置随机种子
-np.random.seed(42)
-
-# -----------------------------
-# RBF 协方差函数
-# -----------------------------
+# RBF
 def calcSigma(X1, X2, theta):
-    v1 = theta[0]  # 信号方差
-    v2 = theta[1]  # 噪声方差
+    v1 = theta[0]  # signal variance
+    v2 = theta[1]  # noise variance
     alpha = theta[2]  # alpha = 2 for RBF
     r = theta[3]  # length-scale
 
@@ -674,39 +212,29 @@ def calcSigma(X1, X2, theta):
         cov += v2 * np.eye(X1.shape[0])
     return cov
 
-# -----------------------------
-# 真实函数定义
-# -----------------------------
 def true_function(x):
     return np.log(x + 1) + np.cos(3 * np.pi * x)
 
-# -----------------------------
-# 数据生成
-# -----------------------------
-n_total = 40
+
+# Data generation
 x_all = np.sort(np.random.uniform(1, 15, n_total))
 y_true = true_function(x_all)
 y_obs = y_true + np.random.normal(0, 1, size=n_total)
 
-# 划分训练（1,12）和测试（12,15）
+# Split into training (1,12) and testing (12,15)
 train_idx = x_all < 12
 x_train = x_all[train_idx]
 y_train = y_obs[train_idx]
 x_test = x_all[~train_idx]
 y_test = y_obs[~train_idx]
 
-# 密集预测点
+# Dense prediction points
 x_star = np.linspace(1, 15, 200)
 
-# -----------------------------
-# 设置核函数参数 theta
-# -----------------------------
 # theta = [v1, v2, alpha, r]
 theta = [1.0, 0.1, 2.0, 0.5]  # RBF kernel
 
-# -----------------------------
-# PRIOR 采样
-# -----------------------------
+# Prior sampling
 Sigma_prior = calcSigma(x_star, x_star, theta)
 prior_samples = multivariate_normal.rvs(
     mean=np.zeros(len(x_star)),
@@ -714,9 +242,7 @@ prior_samples = multivariate_normal.rvs(
     size=5
 )
 
-# -----------------------------
-# 后验均值和协方差
-# -----------------------------
+## Posterior mean and Posterior covariance
 K_xx = calcSigma(x_train, x_train, theta)
 K_xxs = calcSigma(x_train, x_star, theta)
 K_xsx = K_xxs.T
@@ -726,32 +252,26 @@ sigma_n = np.sqrt(theta[1])
 
 K_inv = np.linalg.inv(K_xx + sigma_n**2 * np.eye(len(x_train)))
 
-# 后验均值
+# Posterior mean
 f_star_mean = K_xsx @ K_inv @ y_train
-# 后验协方差
+# Posterior covariance
 cov_f_star = K_xsxs - K_xsx @ K_inv @ K_xxs
 
-# -----------------------------
-# POSTERIOR 采样
-# -----------------------------
+# POSTERIOR sampling
 posterior_samples = multivariate_normal.rvs(
     mean=f_star_mean,
     cov=cov_f_star + 1e-6 * np.eye(len(x_star)),
     size=5
 )
 
-# -----------------------------
-# 置信区间
-# -----------------------------
+# Confidence interval 95%
 conf_upper = f_star_mean + 1.96 * np.sqrt(np.diag(cov_f_star))
 conf_lower = f_star_mean - 1.96 * np.sqrt(np.diag(cov_f_star))
 
-# -----------------------------
-# 绘图
-# -----------------------------
+# Plotting
 plt.figure(figsize=(18, 4))
 
-# 图1：散点图
+# panel 1
 plt.subplot(1, 4, 1)
 plt.scatter(x_train, y_train, color='blue', label='Train')
 plt.scatter(x_test, y_test, color='red', label='Test')
@@ -762,7 +282,7 @@ plt.axvline(12, color='gray', linestyle='--')
 plt.legend()
 plt.grid(True)
 
-# 图2：Prior Samples
+# panel 2
 plt.subplot(1, 4, 2)
 for i in range(5):
     plt.plot(x_star, prior_samples[i], color='orange')
@@ -771,7 +291,7 @@ plt.xlabel('x')
 plt.ylabel('Sampled y')
 plt.grid(True)
 
-# 图3：Posterior Samples
+# panel 3
 plt.subplot(1, 4, 3)
 for i in range(5):
     plt.plot(x_star, posterior_samples[i], color='green')
@@ -780,7 +300,7 @@ plt.xlabel('x')
 plt.ylabel('Sampled y')
 plt.grid(True)
 
-# 图4：后验均值 + 置信区间 + 真值
+# panel 4
 plt.subplot(1, 4, 4)
 plt.plot(x_star, f_star_mean, color='blue', label='Posterior Mean')
 plt.fill_between(x_star, conf_lower, conf_upper, color='gray', alpha=0.4, label='95% CI')
@@ -795,26 +315,11 @@ plt.grid(True)
 plt.tight_layout()
 plt.show()
 
+# ------------------------------------------------------------------------------
 
-# In[ ]:
-
-
-RQ
-
-
-# In[68]:
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.stats import multivariate_normal
-
-# 设置随机种子
+#Figure 9
 np.random.seed(42)
 
-# -----------------------------
-# Rational Quadratic 协方差函数
-# -----------------------------
 def calcSigma_RQ(X1, X2, theta):
     v1 = theta[0]  # 信号方差
     v2 = theta[1]  # 噪声方差
@@ -829,39 +334,23 @@ def calcSigma_RQ(X1, X2, theta):
         cov += v2 * np.eye(len(X1))
     return cov
 
-# -----------------------------
-# 真实函数定义
-# -----------------------------
 def true_function(x):
     return np.log(x + 1) + np.cos(3 * np.pi * x)
 
-# -----------------------------
-# 数据生成
-# -----------------------------
 n_total = 40
 x_all = np.sort(np.random.uniform(1, 15, n_total))
 y_true = true_function(x_all)
 y_obs = y_true + np.random.normal(0, 1, size=n_total)
 
-# 划分训练（1,12）和测试（12,15）
 train_idx = x_all < 12
 x_train = x_all[train_idx]
 y_train = y_obs[train_idx]
 x_test = x_all[~train_idx]
 y_test = y_obs[~train_idx]
 
-# 密集预测点
 x_star = np.linspace(1, 15, 200)
-
-# -----------------------------
-# 设置核函数参数 theta
-# -----------------------------
-# theta = [v1, v2, alpha, r]
 theta = [1.0, 0.1, 10.0, 0.5]  # Rational Quadratic kernel parameters
 
-# -----------------------------
-# PRIOR 采样
-# -----------------------------
 Sigma_prior = calcSigma_RQ(x_star, x_star, theta)
 prior_samples = multivariate_normal.rvs(
     mean=np.zeros(len(x_star)),
@@ -869,9 +358,6 @@ prior_samples = multivariate_normal.rvs(
     size=5
 )
 
-# -----------------------------
-# 后验均值和协方差
-# -----------------------------
 K_xx = calcSigma_RQ(x_train, x_train, theta)
 K_xxs = calcSigma_RQ(x_train, x_star, theta)
 K_xsx = K_xxs.T
@@ -880,32 +366,20 @@ K_xsxs = calcSigma_RQ(x_star, x_star, theta)
 sigma_n = np.sqrt(theta[1])
 K_inv = np.linalg.inv(K_xx + sigma_n**2 * np.eye(len(x_train)))
 
-# 后验均值
 f_star_mean = K_xsx @ K_inv @ y_train
-# 后验协方差
 cov_f_star = K_xsxs - K_xsx @ K_inv @ K_xxs
 
-# -----------------------------
-# POSTERIOR 采样
-# -----------------------------
 posterior_samples = multivariate_normal.rvs(
     mean=f_star_mean,
     cov=cov_f_star + 1e-6 * np.eye(len(x_star)),
     size=5
 )
 
-# -----------------------------
-# 置信区间
-# -----------------------------
 conf_upper = f_star_mean + 1.96 * np.sqrt(np.diag(cov_f_star))
 conf_lower = f_star_mean - 1.96 * np.sqrt(np.diag(cov_f_star))
 
-# -----------------------------
-# 绘图
-# -----------------------------
 plt.figure(figsize=(18, 4))
 
-# 图1：散点图
 plt.subplot(1, 4, 1)
 plt.scatter(x_train, y_train, color='blue', label='Train')
 plt.scatter(x_test, y_test, color='red', label='Test')
@@ -916,7 +390,6 @@ plt.axvline(12, color='gray', linestyle='--')
 plt.legend()
 plt.grid(True)
 
-# 图2：Prior Samples
 plt.subplot(1, 4, 2)
 for i in range(5):
     plt.plot(x_star, prior_samples[i], color='orange')
@@ -925,7 +398,6 @@ plt.xlabel('x')
 plt.ylabel('Sampled y')
 plt.grid(True)
 
-# 图3：Posterior Samples
 plt.subplot(1, 4, 3)
 for i in range(5):
     plt.plot(x_star, posterior_samples[i], color='green')
@@ -934,7 +406,6 @@ plt.xlabel('x')
 plt.ylabel('Sampled y')
 plt.grid(True)
 
-# 图4：Posterior Mean + CI + True
 plt.subplot(1, 4, 4)
 plt.plot(x_star, f_star_mean, color='blue', label='Posterior Mean')
 plt.fill_between(x_star, conf_lower, conf_upper, color='gray', alpha=0.4, label='95% CI')
@@ -949,23 +420,11 @@ plt.grid(True)
 plt.tight_layout()
 plt.show()
 
+#-----------------------------------------------------------------
 
-# In[ ]:
-
-
-Matern
-
-
-# In[86]:
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.stats import multivariate_normal
-
+#Figure 10
 np.random.seed(42)
 
-# Matern 3/2 kernel
 def calcSigma_Matern(X1, X2, theta):
     v1, v2, l = theta
     X1 = X1.reshape(-1, 1)
@@ -1054,20 +513,9 @@ plt.legend(); plt.grid(True)
 plt.tight_layout()
 plt.show()
 
+#-----------------------------------------------------------------------
 
-# In[ ]:
-
-
-PER
-
-
-# In[95]:
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.stats import multivariate_normal
-
+#Figure11
 np.random.seed(42)
 
 # PER kernel
@@ -1157,23 +605,11 @@ plt.legend(); plt.grid(True)
 plt.tight_layout()
 plt.show()
 
+#-------------------------------------------------------------
 
-# In[ ]:
-
-
-LIN
-
-
-# In[88]:
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.stats import multivariate_normal
-
+#Figure 12
 np.random.seed(42)
 
-# PER kernel
 def calcSigma_LIN(X1, X2, theta):
     v1, v2, c = theta
     X1 = X1.reshape(-1, 1)
@@ -1259,35 +695,15 @@ plt.legend(); plt.grid(True)
 plt.tight_layout()
 plt.show()
 
+#---------------------------------------------------------------
 
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-RQ different l
-
-
-# In[99]:
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.stats import multivariate_normal
-
-# 设置随机种子
+#Figure 13
 np.random.seed(42)
 
-# -----------------------------
-# Rational Quadratic 协方差函数
-# -----------------------------
+# RQ Covariance function 
 def calcSigma_RQ(X1, X2, theta):
-    v1 = theta[0]  # 信号方差
-    v2 = theta[1]  # 噪声方差
+    v1 = theta[0]  # signal variance
+    v2 = theta[1]  # noise variance
     alpha = theta[2]  # shape parameter
     r = theta[3]  # length scale
 
@@ -1299,39 +715,23 @@ def calcSigma_RQ(X1, X2, theta):
         cov += v2 * np.eye(len(X1))
     return cov
 
-# -----------------------------
-# 真实函数定义
-# -----------------------------
 def true_function(x):
     return np.log(x + 1) + np.cos(3 * np.pi * x)
 
-# -----------------------------
-# 数据生成
-# -----------------------------
 n_total = 40
 x_all = np.sort(np.random.uniform(1, 15, n_total))
 y_true = true_function(x_all)
 y_obs = y_true + np.random.normal(0, 1, size=n_total)
 
-# 划分训练（1,12）和测试（12,15）
 train_idx = x_all < 12
 x_train = x_all[train_idx]
 y_train = y_obs[train_idx]
 x_test = x_all[~train_idx]
 y_test = y_obs[~train_idx]
 
-# 密集预测点
 x_star = np.linspace(1, 15, 200)
-
-# -----------------------------
-# 设置核函数参数 theta
-# -----------------------------
-# theta = [v1, v2, alpha, r]
 theta = [3, 0.1, 10, 0.2]  # Rational Quadratic kernel parameters
 
-# -----------------------------
-# PRIOR 采样
-# -----------------------------
 Sigma_prior = calcSigma_RQ(x_star, x_star, theta)
 prior_samples = multivariate_normal.rvs(
     mean=np.zeros(len(x_star)),
@@ -1339,9 +739,6 @@ prior_samples = multivariate_normal.rvs(
     size=5
 )
 
-# -----------------------------
-# 后验均值和协方差
-# -----------------------------
 K_xx = calcSigma_RQ(x_train, x_train, theta)
 K_xxs = calcSigma_RQ(x_train, x_star, theta)
 K_xsx = K_xxs.T
@@ -1350,32 +747,20 @@ K_xsxs = calcSigma_RQ(x_star, x_star, theta)
 sigma_n = np.sqrt(theta[1])
 K_inv = np.linalg.inv(K_xx + sigma_n**2 * np.eye(len(x_train)))
 
-# 后验均值
 f_star_mean = K_xsx @ K_inv @ y_train
-# 后验协方差
 cov_f_star = K_xsxs - K_xsx @ K_inv @ K_xxs
 
-# -----------------------------
-# POSTERIOR 采样
-# -----------------------------
 posterior_samples = multivariate_normal.rvs(
     mean=f_star_mean,
     cov=cov_f_star + 1e-6 * np.eye(len(x_star)),
     size=5
 )
 
-# -----------------------------
-# 置信区间
-# -----------------------------
 conf_upper = f_star_mean + 1.96 * np.sqrt(np.diag(cov_f_star))
 conf_lower = f_star_mean - 1.96 * np.sqrt(np.diag(cov_f_star))
 
-# -----------------------------
-# 绘图
-# -----------------------------
 plt.figure(figsize=(18, 4))
 
-# 图1：散点图
 plt.subplot(1, 4, 1)
 plt.scatter(x_train, y_train, color='blue', label='Train')
 plt.scatter(x_test, y_test, color='red', label='Test')
@@ -1386,7 +771,6 @@ plt.axvline(12, color='gray', linestyle='--')
 plt.legend()
 plt.grid(True)
 
-# 图2：Prior Samples
 plt.subplot(1, 4, 2)
 for i in range(5):
     plt.plot(x_star, prior_samples[i], color='orange')
@@ -1395,7 +779,6 @@ plt.xlabel('x')
 plt.ylabel('Sampled y')
 plt.grid(True)
 
-# 图3：Posterior Samples
 plt.subplot(1, 4, 3)
 for i in range(5):
     plt.plot(x_star, posterior_samples[i], color='green')
@@ -1404,7 +787,6 @@ plt.xlabel('x')
 plt.ylabel('Sampled y')
 plt.grid(True)
 
-# 图4：Posterior Mean + CI + True
 plt.subplot(1, 4, 4)
 plt.plot(x_star, f_star_mean, color='blue', label='Posterior Mean')
 plt.fill_between(x_star, conf_lower, conf_upper, color='gray', alpha=0.4, label='95% CI')
@@ -1419,20 +801,11 @@ plt.grid(True)
 plt.tight_layout()
 plt.show()
 
+#-----------------------------------------------------------------------
 
-# In[100]:
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.stats import multivariate_normal
-
-# 设置随机种子
+#Figure 14
 np.random.seed(42)
 
-# -----------------------------
-# Rational Quadratic 协方差函数
-# -----------------------------
 def calcSigma_RQ(X1, X2, theta):
     v1 = theta[0]  # 信号方差
     v2 = theta[1]  # 噪声方差
@@ -1447,39 +820,23 @@ def calcSigma_RQ(X1, X2, theta):
         cov += v2 * np.eye(len(X1))
     return cov
 
-# -----------------------------
-# 真实函数定义
-# -----------------------------
 def true_function(x):
     return np.log(x + 1) + np.cos(3 * np.pi * x)
 
-# -----------------------------
-# 数据生成
-# -----------------------------
 n_total = 40
 x_all = np.sort(np.random.uniform(1, 15, n_total))
 y_true = true_function(x_all)
 y_obs = y_true + np.random.normal(0, 1, size=n_total)
 
-# 划分训练（1,12）和测试（12,15）
 train_idx = x_all < 12
 x_train = x_all[train_idx]
 y_train = y_obs[train_idx]
 x_test = x_all[~train_idx]
 y_test = y_obs[~train_idx]
 
-# 密集预测点
 x_star = np.linspace(1, 15, 200)
-
-# -----------------------------
-# 设置核函数参数 theta
-# -----------------------------
-# theta = [v1, v2, alpha, r]
 theta = [3, 0.1, 10, 0.5]  # Rational Quadratic kernel parameters
 
-# -----------------------------
-# PRIOR 采样
-# -----------------------------
 Sigma_prior = calcSigma_RQ(x_star, x_star, theta)
 prior_samples = multivariate_normal.rvs(
     mean=np.zeros(len(x_star)),
@@ -1487,9 +844,6 @@ prior_samples = multivariate_normal.rvs(
     size=5
 )
 
-# -----------------------------
-# 后验均值和协方差
-# -----------------------------
 K_xx = calcSigma_RQ(x_train, x_train, theta)
 K_xxs = calcSigma_RQ(x_train, x_star, theta)
 K_xsx = K_xxs.T
@@ -1498,32 +852,20 @@ K_xsxs = calcSigma_RQ(x_star, x_star, theta)
 sigma_n = np.sqrt(theta[1])
 K_inv = np.linalg.inv(K_xx + sigma_n**2 * np.eye(len(x_train)))
 
-# 后验均值
 f_star_mean = K_xsx @ K_inv @ y_train
-# 后验协方差
 cov_f_star = K_xsxs - K_xsx @ K_inv @ K_xxs
 
-# -----------------------------
-# POSTERIOR 采样
-# -----------------------------
 posterior_samples = multivariate_normal.rvs(
     mean=f_star_mean,
     cov=cov_f_star + 1e-6 * np.eye(len(x_star)),
     size=5
 )
 
-# -----------------------------
-# 置信区间
-# -----------------------------
 conf_upper = f_star_mean + 1.96 * np.sqrt(np.diag(cov_f_star))
 conf_lower = f_star_mean - 1.96 * np.sqrt(np.diag(cov_f_star))
 
-# -----------------------------
-# 绘图
-# -----------------------------
 plt.figure(figsize=(18, 4))
 
-# 图1：散点图
 plt.subplot(1, 4, 1)
 plt.scatter(x_train, y_train, color='blue', label='Train')
 plt.scatter(x_test, y_test, color='red', label='Test')
@@ -1534,7 +876,6 @@ plt.axvline(12, color='gray', linestyle='--')
 plt.legend()
 plt.grid(True)
 
-# 图2：Prior Samples
 plt.subplot(1, 4, 2)
 for i in range(5):
     plt.plot(x_star, prior_samples[i], color='orange')
@@ -1543,7 +884,6 @@ plt.xlabel('x')
 plt.ylabel('Sampled y')
 plt.grid(True)
 
-# 图3：Posterior Samples
 plt.subplot(1, 4, 3)
 for i in range(5):
     plt.plot(x_star, posterior_samples[i], color='green')
@@ -1552,7 +892,6 @@ plt.xlabel('x')
 plt.ylabel('Sampled y')
 plt.grid(True)
 
-# 图4：Posterior Mean + CI + True
 plt.subplot(1, 4, 4)
 plt.plot(x_star, f_star_mean, color='blue', label='Posterior Mean')
 plt.fill_between(x_star, conf_lower, conf_upper, color='gray', alpha=0.4, label='95% CI')
@@ -1567,20 +906,11 @@ plt.grid(True)
 plt.tight_layout()
 plt.show()
 
+#-----------------------------------------------------------------------
 
-# In[101]:
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.stats import multivariate_normal
-
-# 设置随机种子
+# Figure15
 np.random.seed(42)
 
-# -----------------------------
-# Rational Quadratic 协方差函数
-# -----------------------------
 def calcSigma_RQ(X1, X2, theta):
     v1 = theta[0]  # 信号方差
     v2 = theta[1]  # 噪声方差
@@ -1595,39 +925,23 @@ def calcSigma_RQ(X1, X2, theta):
         cov += v2 * np.eye(len(X1))
     return cov
 
-# -----------------------------
-# 真实函数定义
-# -----------------------------
 def true_function(x):
     return np.log(x + 1) + np.cos(3 * np.pi * x)
 
-# -----------------------------
-# 数据生成
-# -----------------------------
 n_total = 40
 x_all = np.sort(np.random.uniform(1, 15, n_total))
 y_true = true_function(x_all)
 y_obs = y_true + np.random.normal(0, 1, size=n_total)
 
-# 划分训练（1,12）和测试（12,15）
 train_idx = x_all < 12
 x_train = x_all[train_idx]
 y_train = y_obs[train_idx]
 x_test = x_all[~train_idx]
 y_test = y_obs[~train_idx]
 
-# 密集预测点
 x_star = np.linspace(1, 15, 200)
-
-# -----------------------------
-# 设置核函数参数 theta
-# -----------------------------
-# theta = [v1, v2, alpha, r]
 theta = [3, 0.1, 10, 1]  # Rational Quadratic kernel parameters
 
-# -----------------------------
-# PRIOR 采样
-# -----------------------------
 Sigma_prior = calcSigma_RQ(x_star, x_star, theta)
 prior_samples = multivariate_normal.rvs(
     mean=np.zeros(len(x_star)),
@@ -1635,9 +949,6 @@ prior_samples = multivariate_normal.rvs(
     size=5
 )
 
-# -----------------------------
-# 后验均值和协方差
-# -----------------------------
 K_xx = calcSigma_RQ(x_train, x_train, theta)
 K_xxs = calcSigma_RQ(x_train, x_star, theta)
 K_xsx = K_xxs.T
@@ -1646,32 +957,20 @@ K_xsxs = calcSigma_RQ(x_star, x_star, theta)
 sigma_n = np.sqrt(theta[1])
 K_inv = np.linalg.inv(K_xx + sigma_n**2 * np.eye(len(x_train)))
 
-# 后验均值
 f_star_mean = K_xsx @ K_inv @ y_train
-# 后验协方差
 cov_f_star = K_xsxs - K_xsx @ K_inv @ K_xxs
 
-# -----------------------------
-# POSTERIOR 采样
-# -----------------------------
 posterior_samples = multivariate_normal.rvs(
     mean=f_star_mean,
     cov=cov_f_star + 1e-6 * np.eye(len(x_star)),
     size=5
 )
 
-# -----------------------------
-# 置信区间
-# -----------------------------
 conf_upper = f_star_mean + 1.96 * np.sqrt(np.diag(cov_f_star))
 conf_lower = f_star_mean - 1.96 * np.sqrt(np.diag(cov_f_star))
 
-# -----------------------------
-# 绘图
-# -----------------------------
 plt.figure(figsize=(18, 4))
 
-# 图1：散点图
 plt.subplot(1, 4, 1)
 plt.scatter(x_train, y_train, color='blue', label='Train')
 plt.scatter(x_test, y_test, color='red', label='Test')
@@ -1682,7 +981,6 @@ plt.axvline(12, color='gray', linestyle='--')
 plt.legend()
 plt.grid(True)
 
-# 图2：Prior Samples
 plt.subplot(1, 4, 2)
 for i in range(5):
     plt.plot(x_star, prior_samples[i], color='orange')
@@ -1691,7 +989,6 @@ plt.xlabel('x')
 plt.ylabel('Sampled y')
 plt.grid(True)
 
-# 图3：Posterior Samples
 plt.subplot(1, 4, 3)
 for i in range(5):
     plt.plot(x_star, posterior_samples[i], color='green')
@@ -1700,7 +997,6 @@ plt.xlabel('x')
 plt.ylabel('Sampled y')
 plt.grid(True)
 
-# 图4：Posterior Mean + CI + True
 plt.subplot(1, 4, 4)
 plt.plot(x_star, f_star_mean, color='blue', label='Posterior Mean')
 plt.fill_between(x_star, conf_lower, conf_upper, color='gray', alpha=0.4, label='95% CI')
@@ -1715,26 +1011,11 @@ plt.grid(True)
 plt.tight_layout()
 plt.show()
 
+#-----------------------------------------------------------
 
-# In[ ]:
-
-
-
-
-
-# In[102]:
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.stats import multivariate_normal
-
-# 设置随机种子
+#Figure 16
 np.random.seed(42)
 
-# -----------------------------
-# Rational Quadratic 协方差函数
-# -----------------------------
 def calcSigma_RQ(X1, X2, theta):
     v1 = theta[0]  # 信号方差
     v2 = theta[1]  # 噪声方差
@@ -1749,39 +1030,23 @@ def calcSigma_RQ(X1, X2, theta):
         cov += v2 * np.eye(len(X1))
     return cov
 
-# -----------------------------
-# 真实函数定义
-# -----------------------------
 def true_function(x):
     return np.log(x + 1) + np.cos(3 * np.pi * x)
-
-# -----------------------------
-# 数据生成
-# -----------------------------
+    
 n_total = 40
 x_all = np.sort(np.random.uniform(1, 15, n_total))
 y_true = true_function(x_all)
 y_obs = y_true + np.random.normal(0, 1, size=n_total)
 
-# 划分训练（1,12）和测试（12,15）
 train_idx = x_all < 12
 x_train = x_all[train_idx]
 y_train = y_obs[train_idx]
 x_test = x_all[~train_idx]
 y_test = y_obs[~train_idx]
 
-# 密集预测点
 x_star = np.linspace(1, 15, 200)
-
-# -----------------------------
-# 设置核函数参数 theta
-# -----------------------------
-# theta = [v1, v2, alpha, r]
 theta = [3, 0.1, 0.001, 0.234]  # Rational Quadratic kernel parameters
 
-# -----------------------------
-# PRIOR 采样
-# -----------------------------
 Sigma_prior = calcSigma_RQ(x_star, x_star, theta)
 prior_samples = multivariate_normal.rvs(
     mean=np.zeros(len(x_star)),
@@ -1789,9 +1054,6 @@ prior_samples = multivariate_normal.rvs(
     size=5
 )
 
-# -----------------------------
-# 后验均值和协方差
-# -----------------------------
 K_xx = calcSigma_RQ(x_train, x_train, theta)
 K_xxs = calcSigma_RQ(x_train, x_star, theta)
 K_xsx = K_xxs.T
@@ -1800,32 +1062,20 @@ K_xsxs = calcSigma_RQ(x_star, x_star, theta)
 sigma_n = np.sqrt(theta[1])
 K_inv = np.linalg.inv(K_xx + sigma_n**2 * np.eye(len(x_train)))
 
-# 后验均值
 f_star_mean = K_xsx @ K_inv @ y_train
-# 后验协方差
 cov_f_star = K_xsxs - K_xsx @ K_inv @ K_xxs
 
-# -----------------------------
-# POSTERIOR 采样
-# -----------------------------
 posterior_samples = multivariate_normal.rvs(
     mean=f_star_mean,
     cov=cov_f_star + 1e-6 * np.eye(len(x_star)),
     size=5
 )
 
-# -----------------------------
-# 置信区间
-# -----------------------------
 conf_upper = f_star_mean + 1.96 * np.sqrt(np.diag(cov_f_star))
 conf_lower = f_star_mean - 1.96 * np.sqrt(np.diag(cov_f_star))
 
-# -----------------------------
-# 绘图
-# -----------------------------
 plt.figure(figsize=(18, 4))
 
-# 图1：散点图
 plt.subplot(1, 4, 1)
 plt.scatter(x_train, y_train, color='blue', label='Train')
 plt.scatter(x_test, y_test, color='red', label='Test')
@@ -1836,7 +1086,6 @@ plt.axvline(12, color='gray', linestyle='--')
 plt.legend()
 plt.grid(True)
 
-# 图2：Prior Samples
 plt.subplot(1, 4, 2)
 for i in range(5):
     plt.plot(x_star, prior_samples[i], color='orange')
@@ -1845,7 +1094,6 @@ plt.xlabel('x')
 plt.ylabel('Sampled y')
 plt.grid(True)
 
-# 图3：Posterior Samples
 plt.subplot(1, 4, 3)
 for i in range(5):
     plt.plot(x_star, posterior_samples[i], color='green')
@@ -1854,7 +1102,6 @@ plt.xlabel('x')
 plt.ylabel('Sampled y')
 plt.grid(True)
 
-# 图4：Posterior Mean + CI + True
 plt.subplot(1, 4, 4)
 plt.plot(x_star, f_star_mean, color='blue', label='Posterior Mean')
 plt.fill_between(x_star, conf_lower, conf_upper, color='gray', alpha=0.4, label='95% CI')
@@ -1870,24 +1117,16 @@ plt.tight_layout()
 plt.show()
 
 
-# In[103]:
+#--------------------------------------------------------
 
-
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.stats import multivariate_normal
-
-# 设置随机种子
+#Figure 17
 np.random.seed(42)
 
-# -----------------------------
-# Rational Quadratic 协方差函数
-# -----------------------------
 def calcSigma_RQ(X1, X2, theta):
-    v1 = theta[0]  # 信号方差
-    v2 = theta[1]  # 噪声方差
-    alpha = theta[2]  # shape parameter
-    r = theta[3]  # length scale
+    v1 = theta[0]  
+    v2 = theta[1] 
+    alpha = theta[2] 
+    r = theta[3]  
 
     X1 = X1.reshape(-1, 1)
     X2 = X2.reshape(1, -1)
@@ -1897,39 +1136,23 @@ def calcSigma_RQ(X1, X2, theta):
         cov += v2 * np.eye(len(X1))
     return cov
 
-# -----------------------------
-# 真实函数定义
-# -----------------------------
 def true_function(x):
     return np.log(x + 1) + np.cos(3 * np.pi * x)
 
-# -----------------------------
-# 数据生成
-# -----------------------------
 n_total = 40
 x_all = np.sort(np.random.uniform(1, 15, n_total))
 y_true = true_function(x_all)
 y_obs = y_true + np.random.normal(0, 1, size=n_total)
 
-# 划分训练（1,12）和测试（12,15）
 train_idx = x_all < 12
 x_train = x_all[train_idx]
 y_train = y_obs[train_idx]
 x_test = x_all[~train_idx]
 y_test = y_obs[~train_idx]
 
-# 密集预测点
 x_star = np.linspace(1, 15, 200)
-
-# -----------------------------
-# 设置核函数参数 theta
-# -----------------------------
-# theta = [v1, v2, alpha, r]
 theta = [3, 0.1, 0.1, 0.234]  # Rational Quadratic kernel parameters
 
-# -----------------------------
-# PRIOR 采样
-# -----------------------------
 Sigma_prior = calcSigma_RQ(x_star, x_star, theta)
 prior_samples = multivariate_normal.rvs(
     mean=np.zeros(len(x_star)),
@@ -1937,9 +1160,6 @@ prior_samples = multivariate_normal.rvs(
     size=5
 )
 
-# -----------------------------
-# 后验均值和协方差
-# -----------------------------
 K_xx = calcSigma_RQ(x_train, x_train, theta)
 K_xxs = calcSigma_RQ(x_train, x_star, theta)
 K_xsx = K_xxs.T
@@ -1948,32 +1168,20 @@ K_xsxs = calcSigma_RQ(x_star, x_star, theta)
 sigma_n = np.sqrt(theta[1])
 K_inv = np.linalg.inv(K_xx + sigma_n**2 * np.eye(len(x_train)))
 
-# 后验均值
 f_star_mean = K_xsx @ K_inv @ y_train
-# 后验协方差
 cov_f_star = K_xsxs - K_xsx @ K_inv @ K_xxs
 
-# -----------------------------
-# POSTERIOR 采样
-# -----------------------------
 posterior_samples = multivariate_normal.rvs(
     mean=f_star_mean,
     cov=cov_f_star + 1e-6 * np.eye(len(x_star)),
     size=5
 )
 
-# -----------------------------
-# 置信区间
-# -----------------------------
 conf_upper = f_star_mean + 1.96 * np.sqrt(np.diag(cov_f_star))
 conf_lower = f_star_mean - 1.96 * np.sqrt(np.diag(cov_f_star))
 
-# -----------------------------
-# 绘图
-# -----------------------------
 plt.figure(figsize=(18, 4))
 
-# 图1：散点图
 plt.subplot(1, 4, 1)
 plt.scatter(x_train, y_train, color='blue', label='Train')
 plt.scatter(x_test, y_test, color='red', label='Test')
@@ -1984,7 +1192,6 @@ plt.axvline(12, color='gray', linestyle='--')
 plt.legend()
 plt.grid(True)
 
-# 图2：Prior Samples
 plt.subplot(1, 4, 2)
 for i in range(5):
     plt.plot(x_star, prior_samples[i], color='orange')
@@ -1993,7 +1200,6 @@ plt.xlabel('x')
 plt.ylabel('Sampled y')
 plt.grid(True)
 
-# 图3：Posterior Samples
 plt.subplot(1, 4, 3)
 for i in range(5):
     plt.plot(x_star, posterior_samples[i], color='green')
@@ -2002,7 +1208,6 @@ plt.xlabel('x')
 plt.ylabel('Sampled y')
 plt.grid(True)
 
-# 图4：Posterior Mean + CI + True
 plt.subplot(1, 4, 4)
 plt.plot(x_star, f_star_mean, color='blue', label='Posterior Mean')
 plt.fill_between(x_star, conf_lower, conf_upper, color='gray', alpha=0.4, label='95% CI')
@@ -2017,25 +1222,15 @@ plt.grid(True)
 plt.tight_layout()
 plt.show()
 
+#--------------------------------------------------------------------------------
 
-# In[105]:
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.stats import multivariate_normal
-
-# 设置随机种子
+#Figure 18
 np.random.seed(42)
-
-# -----------------------------
-# Rational Quadratic 协方差函数
-# -----------------------------
 def calcSigma_RQ(X1, X2, theta):
-    v1 = theta[0]  # 信号方差
-    v2 = theta[1]  # 噪声方差
-    alpha = theta[2]  # shape parameter
-    r = theta[3]  # length scale
+    v1 = theta[0]  
+    v2 = theta[1]  
+    alpha = theta[2] 
+    r = theta[3]  
 
     X1 = X1.reshape(-1, 1)
     X2 = X2.reshape(1, -1)
@@ -2045,39 +1240,24 @@ def calcSigma_RQ(X1, X2, theta):
         cov += v2 * np.eye(len(X1))
     return cov
 
-# -----------------------------
-# 真实函数定义
-# -----------------------------
 def true_function(x):
     return np.log(x + 1) + np.cos(3 * np.pi * x)
 
-# -----------------------------
-# 数据生成
-# -----------------------------
 n_total = 40
 x_all = np.sort(np.random.uniform(1, 15, n_total))
 y_true = true_function(x_all)
 y_obs = y_true + np.random.normal(0, 1, size=n_total)
 
-# 划分训练（1,12）和测试（12,15）
 train_idx = x_all < 12
 x_train = x_all[train_idx]
 y_train = y_obs[train_idx]
 x_test = x_all[~train_idx]
 y_test = y_obs[~train_idx]
 
-# 密集预测点
 x_star = np.linspace(1, 15, 200)
 
-# -----------------------------
-# 设置核函数参数 theta
-# -----------------------------
-# theta = [v1, v2, alpha, r]
 theta = [3, 0.1, 10000, 0.234]  # Rational Quadratic kernel parameters
 
-# -----------------------------
-# PRIOR 采样
-# -----------------------------
 Sigma_prior = calcSigma_RQ(x_star, x_star, theta)
 prior_samples = multivariate_normal.rvs(
     mean=np.zeros(len(x_star)),
@@ -2085,9 +1265,6 @@ prior_samples = multivariate_normal.rvs(
     size=5
 )
 
-# -----------------------------
-# 后验均值和协方差
-# -----------------------------
 K_xx = calcSigma_RQ(x_train, x_train, theta)
 K_xxs = calcSigma_RQ(x_train, x_star, theta)
 K_xsx = K_xxs.T
@@ -2096,32 +1273,20 @@ K_xsxs = calcSigma_RQ(x_star, x_star, theta)
 sigma_n = np.sqrt(theta[1])
 K_inv = np.linalg.inv(K_xx + sigma_n**2 * np.eye(len(x_train)))
 
-# 后验均值
 f_star_mean = K_xsx @ K_inv @ y_train
-# 后验协方差
 cov_f_star = K_xsxs - K_xsx @ K_inv @ K_xxs
 
-# -----------------------------
-# POSTERIOR 采样
-# -----------------------------
 posterior_samples = multivariate_normal.rvs(
     mean=f_star_mean,
     cov=cov_f_star + 1e-6 * np.eye(len(x_star)),
     size=5
 )
 
-# -----------------------------
-# 置信区间
-# -----------------------------
 conf_upper = f_star_mean + 1.96 * np.sqrt(np.diag(cov_f_star))
 conf_lower = f_star_mean - 1.96 * np.sqrt(np.diag(cov_f_star))
 
-# -----------------------------
-# 绘图
-# -----------------------------
 plt.figure(figsize=(18, 4))
 
-# 图1：散点图
 plt.subplot(1, 4, 1)
 plt.scatter(x_train, y_train, color='blue', label='Train')
 plt.scatter(x_test, y_test, color='red', label='Test')
@@ -2132,7 +1297,6 @@ plt.axvline(12, color='gray', linestyle='--')
 plt.legend()
 plt.grid(True)
 
-# 图2：Prior Samples
 plt.subplot(1, 4, 2)
 for i in range(5):
     plt.plot(x_star, prior_samples[i], color='orange')
@@ -2141,7 +1305,6 @@ plt.xlabel('x')
 plt.ylabel('Sampled y')
 plt.grid(True)
 
-# 图3：Posterior Samples
 plt.subplot(1, 4, 3)
 for i in range(5):
     plt.plot(x_star, posterior_samples[i], color='green')
@@ -2150,7 +1313,6 @@ plt.xlabel('x')
 plt.ylabel('Sampled y')
 plt.grid(True)
 
-# 图4：Posterior Mean + CI + True
 plt.subplot(1, 4, 4)
 plt.plot(x_star, f_star_mean, color='blue', label='Posterior Mean')
 plt.fill_between(x_star, conf_lower, conf_upper, color='gray', alpha=0.4, label='95% CI')
@@ -2165,9 +1327,193 @@ plt.grid(True)
 plt.tight_layout()
 plt.show()
 
+#-------------------------------------------------------------------
 
-# In[ ]:
+#Figure19
+#settings
+rng = default_rng(0)          # change to default_rng() for different samples each run
+n_samples = 5                 # number of functions sampled in each panel
+x = np.linspace(0.0, 5.0, 300)
 
+# Normalize and rescale input to avoid too large values for DotProduct kernel
+x_feat = ((x - x.mean()) / 2.0).reshape(-1, 1)
 
+# Base kernels (hyperparameters can be adjusted)
+rbf = RBF(length_scale=1.6)
+lin = DotProduct(sigma_0=1.0)            # linear kernel (formerly DP)
+rq  = RationalQuadratic(length_scale=1.2, alpha=0.8)
+per = ExpSineSquared(length_scale=1.0, periodicity=2.2)
+
+# Composite kernels: addition & multiplication
+panels = [
+    ("RBF+LIN",  rbf + lin),
+    ("RBF*LIN",  rbf * lin),
+    ("RQ+PER",   rq  + per),
+    ("RQ*PER",   rq  * per),
+]
+
+def gp_prior_samples(kernel, X, n_funcs, rng):
+    """Sample from zero-mean GP prior given kernel and 1D inputs X."""
+    K = kernel(X)                      # covariance matrix
+    K = K + 1e-8 * np.eye(len(X))      # numerical stability
+    Y = rng.multivariate_normal(np.zeros(len(X)), K, size=n_funcs).T
+    return Y                           # shape: (len(X), n_funcs)
+
+def style_axes(ax, ylim=(-3.5, 3.5)):
+    """Apply consistent axis style for better visualization."""
+    for s in ax.spines.values():
+        s.set_linewidth(1.4)
+    ax.tick_params(axis='both', labelsize=9, width=1.2, length=3)
+    ax.set_xlim(x.min(), x.max())
+    ax.set_ylim(*ylim)
+
+#plotting
+fig, axes = plt.subplots(2, 2, figsize=(10, 6.2),
+                         gridspec_kw={"wspace": 0.35, "hspace": 0.60})
+
+for ax, (label, kernel) in zip(axes.ravel(), panels):
+    Y = gp_prior_samples(kernel, x_feat, n_samples, rng)
+    for i in range(n_samples):
+        ax.plot(x, Y[:, i], linewidth=2.2)
+    style_axes(ax)
+    # Label y-axis with kernel name (consistent with example figure)
+    ax.set_ylabel(label, rotation=90, fontsize=11, labelpad=10)
+    ax.set_xlabel("")
+
+plt.savefig("composite_kernels_priors_lin.png", dpi=300, bbox_inches="tight")
+plt.show()
+
+#-------------------------------------------------------------------------------------------
+
+#Figure 20
+#Hhyperparameters 
+sigma2 = 1.0      # amplitude (here all kernels scaled to 1)
+ell    = 1.0      # length-scale l
+alpha  = 2.0      # RQ shape
+p      = 3.0      # PER period
+
+# Distance domain r in [-5, 5]
+r = np.linspace(-5.0, 5.0, 800)
+
+# base kernels k(r)
+def k_rbf(r, ell=1.0, sigma2=1.0):
+    return sigma2 * np.exp(-(r**2)/(2.0*ell**2))
+
+def k_rq(r, ell=1.0, alpha=2.0, sigma2=1.0):
+    return sigma2 * (1.0 + (r**2)/(2.0*alpha*ell**2))**(-alpha)
+
+def k_per(r, ell=1.0, p=3.0, sigma2=1.0):
+    # ExpSineSquared: sigma^2 * exp( - 2 sin^2(pi r / p) / l^2 )
+    return sigma2 * np.exp(-2.0 * np.sin(np.pi * r / p)**2 / (ell**2))
+
+def k_lin(r):
+    # Linear kernel section (same as DotProduct without bias)
+    return r
+
+# composite kernels on r 
+def add(a, b):  return a + b
+def mul(a, b):  return a * b
+
+# Compute profiles
+rbf   = k_rbf(r, ell=ell, sigma2=sigma2)
+rq    = k_rq(r,  ell=ell, alpha=alpha, sigma2=sigma2)
+per   = k_per(r, ell=ell, p=p, sigma2=sigma2)
+lin   = k_lin(r)
+
+profiles = [
+    ("RBF+LIN",  add(rbf, lin)),   ("RBF*LIN",  mul(rbf, lin)),
+    ("RBF+PER",  add(rbf, per)),   ("RBF*PER",  mul(rbf, per)),
+    ("RQ+LIN",   add(rq,  lin)),   ("RQ*LIN",   mul(rq,  lin)),
+]
+
+# plotting 
+fig, axes = plt.subplots(3, 2, figsize=(10, 7.2),
+                         gridspec_kw={"wspace": 0.35, "hspace": 0.75})
+
+for ax, (label, y) in zip(axes.ravel(), profiles):
+    ax.plot(r, y, linewidth=2.3)
+    # style
+    for s in ax.spines.values():
+        s.set_linewidth(1.4)
+    ax.tick_params(axis='both', labelsize=9, width=1.2, length=3)
+    ax.set_xlim(r.min(), r.max())
+    ax.margins(x=0.03)
+    ax.set_ylabel(label, rotation=90, fontsize=11, labelpad=10)
+    ax.set_xlabel("")
+
+plt.savefig("composite_kernel_profiles_6panels_lin.png", dpi=300, bbox_inches="tight")
+plt.show()
+
+#----------------------------------------------------------------------------------
+
+#Figure21
+#Hyperparameters
+sigma2 = 1.0   # amplitude
+ell    = 1.0   # length-scale l
+alpha  = 2.0   # RQ shape
+p      = 3.0   # PER period
+
+# Domains: symmetric for kernels involving PER; nonnegative for pure distance kernels
+r_sym  = np.linspace(-5.0, 5.0, 800)   # for plots with PER
+r_pos  = np.linspace(0.0,  5.0, 800)   # for RQ+Matern and RQ*Matern
+
+# Base kernels k(r) 
+def k_rbf(r, ell=1.0, sigma2=1.0):
+    return sigma2 * np.exp(-(r**2)/(2.0*ell**2))
+
+def k_rq(r, ell=1.0, alpha=2.0, sigma2=1.0):
+    # Rational Quadratic as function of distance r >= 0
+    return sigma2 * (1.0 + (r**2)/(2.0*alpha*ell**2))**(-alpha)
+
+def k_per(r, ell=1.0, p=3.0, sigma2=1.0):
+    # ExpSineSquared: sigma^2 * exp( - 2 sin^2(pi r / p) / l^2 )
+    return sigma2 * np.exp(-2.0 * np.sin(np.pi * r / p)**2 / (ell**2))
+
+def k_matern32(r, ell=1.0, sigma2=1.0):
+    # Matérn ν=3/2: sigma^2 * (1 + sqrt(3) r / l) * exp(-sqrt(3) r / l)
+    c = np.sqrt(3.0) * r / ell
+    return sigma2 * (1.0 + c) * np.exp(-c)
+
+def k_lin_section(r):
+    # Linear (DotProduct) illustrative section
+    return r
+
+# Short-hands using |r| when needed
+abs_sym  = np.abs(r_sym)
+abs_pos  = r_pos  # already nonnegative
+
+#Composite profiles 
+profiles = [
+    ("RQ+PER",    k_rq(abs_sym, ell, alpha, sigma2) + k_per(r_sym, ell, p, sigma2),
+                  r_sym),
+    ("RQ*PER",    k_rq(abs_sym, ell, alpha, sigma2) * k_per(r_sym, ell, p, sigma2),
+                  r_sym),
+    ("LIN+PER",   k_lin_section(r_sym) + k_per(r_sym, ell, p, sigma2),
+                  r_sym),
+    ("LIN*PER",   k_lin_section(r_sym) * k_per(r_sym, ell, p, sigma2),
+                  r_sym),
+    ("RQ+Matern", k_rq(abs_pos, ell, alpha, sigma2) + k_matern32(abs_pos, ell, sigma2),
+                  r_pos),
+    ("RQ*Matern", k_rq(abs_pos, ell, alpha, sigma2) * k_matern32(abs_pos, ell, sigma2),
+                  r_pos),
+]
+
+# Plotting 
+fig, axes = plt.subplots(3, 2, figsize=(10, 6.6),
+                         gridspec_kw={"wspace": 0.35, "hspace": 0.75})
+
+for ax, (label, y, rr) in zip(axes.ravel(), profiles):
+    ax.plot(rr, y, linewidth=2.3)
+    # styling
+    for s in ax.spines.values():
+        s.set_linewidth(1.4)
+    ax.tick_params(axis='both', labelsize=9, width=1.2, length=3)
+    ax.set_xlim(rr.min(), rr.max())
+    ax.margins(x=0.03)
+    ax.set_ylabel(label, rotation=90, fontsize=11, labelpad=10)
+    ax.set_xlabel("")
+
+plt.savefig("composite_kernel_profiles_rq_per_lin_matern.png", dpi=300, bbox_inches="tight")
+plt.show()
 
 

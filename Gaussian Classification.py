@@ -1,10 +1,11 @@
+#Figure 28
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel
 from sklearn.metrics import accuracy_score, roc_auc_score, brier_score_loss
 
-# 1) Generate synthetic data from a complex latent function
+# Generate synthetic data from a complex latent function
 np.random.seed(42)
 X = np.linspace(-6, 6, 120).reshape(-1, 1)
 
@@ -17,30 +18,29 @@ p_true = 1.0 / (1.0 + np.exp(-f_true))
 # Sample binary labels according to the probabilities
 y = np.random.binomial(1, p_true)
 
-# 2) Split into train and test sets
+# Split into train and test sets
 n_train = 80
 X_train, y_train = X[:n_train], y[:n_train]
 X_test,  y_test  = X[n_train:], y[n_train:]
 
-# 3) Define and fit GPC with an RBF kernel
+# Define and fit GPC with an RBF kernel
 kernel = ConstantKernel(1.0) * RBF(length_scale=1.5)
 gpc = GaussianProcessClassifier(kernel=kernel, random_state=42)
 gpc.fit(X_train, y_train)
 
-# 4) Predict on the test set
+# Predict on the test set
 proba_test = gpc.predict_proba(X_test)[:, 1]
 y_pred = (proba_test >= 0.5).astype(int)
 
-# 5) Evaluate performance
+# Evaluate performance
 acc = accuracy_score(y_test, y_pred)
 auc = roc_auc_score(y_test, proba_test)
 brier = brier_score_loss(y_test, proba_test)
 print(f"Accuracy = {acc:.4f}, AUC = {auc:.4f}, Brier = {brier:.4f}")
 
-# 6) Plot
+# Plot
 plt.figure(figsize=(8, 5))
 
-# Training points: all in blue (ignore class labels)
 plt.scatter(
     X_train, y_train,
     color="blue",
@@ -49,7 +49,6 @@ plt.scatter(
     alpha=0.7
 )
 
-# Test points: also all in blue (ignore class labels)
 plt.scatter(
     X_test, y_test,
     color="blue",
@@ -58,14 +57,12 @@ plt.scatter(
     alpha=0.9
 )
 
-# True probability curve (red dashed)
 plt.plot(
     X, p_true,
     "r--", lw=2,
     label="True probability"
 )
 
-# GPC predicted probability (blue solid)
 proba_all = gpc.predict_proba(X)[:, 1]
 plt.plot(
     X, proba_all,
@@ -81,26 +78,13 @@ plt.legend()
 plt.tight_layout()
 plt.show()
 
-# Optional: save figure for paper
-# plt.savefig("figures/gpc_synthetic_blue.png", dpi=300, bbox_inches="tight")
 
+#-------------------------------------------------------------------------------------
 
-# In[ ]:
-
-
-
-
-
-# RBF
-
-# In[29]:
-
-
-# -*- coding: utf-8 -*-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import textwrap  # 自动换行
+import textwrap 
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import (
@@ -116,7 +100,7 @@ from sklearn.gaussian_process.kernels import (
 DATA_PATH = "E:/系统默认/桌面/eggprice.csv"
 N_LAGS    = 6
 TEST_SIZE = 105
-TAU_MODE  = "median"   # "median" | "mean" | 数值
+TAU_MODE  = "median"   
 H_LIST    = [1, 4, 8]
 
 # ========= 读取数据 =========
